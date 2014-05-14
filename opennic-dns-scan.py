@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ########################################################################
 import os, sys, re
+from time import sleep
 ########################################################################
 def loadFile(fileName):
 	try:
@@ -66,7 +67,7 @@ def downloadFile(fileAddress):
 		downloadedFileObject = urlopen(str(fileAddress))
 	except:
 		print "Failed to download :",fileAddress
-		return "FAIL"
+		return False
 	lineCount = 0
 	fileText = ''
 	for line in downloadedFileObject:
@@ -166,8 +167,19 @@ def replaceLineInFile(fileName,stringToSearchForInLine,replacementText):
 		return False
 	writeFile(fileName,newFileText)
 ########################################################################
+downloadData = False
+retryCounter = 0
 # download webpage that shows closest dns servers
-downloadData = downloadFile('http://www.opennicproject.org/nearest-servers/')
+while downloadData == False: # try to download the file 10 times
+	downloadData = downloadFile('http://www.opennicproject.org/nearest-servers/')
+	if retryCounter >= 10:
+		# fail and exit if the server list page fails to download
+		print 'ERROR: Server list failed to download, program will now exit.'
+		exit()
+	elif downloadData == False:
+		print 'Waiting 5 seconds before retry...'
+		sleep(5)
+	retryCounter += 1
 # start work on ripping out ip addresses of dns servers
 downloadData = grabXmlValues(grabXmlValues(downloadData,'div class="post-entry"')[0],'p')[0].split('\n')
 data = []
