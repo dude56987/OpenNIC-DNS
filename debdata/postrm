@@ -1,0 +1,2 @@
+# remove custom configuration file
+rm -v /etc/network/interfaces.d/custom-dns

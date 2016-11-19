@@ -1,7 +1,7 @@
 #! /usr/bin/python
 ########################################################################
 # Scan for closest Open NIC servers and set the system to use them.
-# Copyright (C) 2014  Carl J Smith
+# Copyright (C) 2016  Carl J Smith
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 ########################################################################
 import os, sys, re
 from time import sleep
+from urllib2 import urlopen
 ########################################################################
 def loadFile(fileName):
 	try:
@@ -61,7 +62,6 @@ def writeFile(fileName,contentToWrite):
 		return False
 ########################################################################
 def downloadFile(fileAddress):
-	from urllib2 import urlopen
 	try:
 		print "Downloading :",fileAddress
 		downloadedFileObject = urlopen(str(fileAddress))
@@ -77,74 +77,6 @@ def downloadFile(fileAddress):
 	downloadedFileObject.close()
 	print "Finished Loading :",fileAddress
 	return fileText
-########################################################################
-#Function that opens a xml file and reads data from a set of tags
-def xmlTagValues(fileName,tagValue):
-	'''Open a file (fileName) and search line by line through the 
-	file for every occurrence of a xml tag (tagValue) and return the 
-	values inside each of the tags in an array. If no values are 
-	found the function will return the value (None). NOTE: This can 
-	not find multiples of the same tag if they are on the same 
-	line.'''
-	from re import sub,search,findall
-	#open the specified file
-	fileObject = open(fileName,'r')
-	# create local variables to be used latter
-	temp = ''
-	totalTags = 0
-	values = []
-	# loop through the lines in the file
-	for i in fileObject:
-		if i[:1] != '#':
-			# remove all newlines and tabs
-			i = sub('\n','',i)
-			i = sub('\t+','',i)
-			temp += i
-			if search(('<'+tagValue+'>'),i) != None:
-				totalTags += 1
-	# close the file to save memory
-	fileObject.close()
-	# if the tag specified by the user was not found in the file return
-	# None
-	if totalTags == 0:
-		return None
-	else:
-		# Loop through the string as many times as the tag is found
-		for x in range(len(findall(('<'+tagValue+'>'),temp))):
-			# Find the front and back of the value inside the tags to cut it out
-			front = (temp.find(('<'+tagValue+'>'))+len(('<'+tagValue+'>')))
-			back = temp.find(('</'+tagValue+'>'))
-			# add the values into the (values) array
-			values.append(temp[front:back])
-			# cut the temp string up to the end of the last string worked on
-			temp = temp[(back+len(tagValue+'>')):]
-		return values
-########################################################################
-def grabXmlValues(inputString, tagValue):
-	'''Gets all xml values from a text string matching the search value
-	and returns an array'''
-	from re import sub,search,findall
-	tagValue = str(tagValue)# just in case
-	totalTags = inputString.find(tagValue)
-	values = []
-	temp = inputString
-	if totalTags == -1:
-		#~ print 'XML values do not exist for '+tagValue
-		return []
-	else:
-		# Loop through the string as many times as the tag is found
-		#~ while temp.find(('<'+tagValue+'>')):
-		for x in range(len(findall(('<'+tagValue+'>'),temp))):
-			# Find the front and back of the value inside the tags to cut it out
-			front = (temp.find(('<'+tagValue+'>'))+len(('<'+tagValue+'>')))
-			back = temp.find(('</'+tagValue+'>'))
-			# add the values into the (values) array
-			values.append(temp[front:back])
-			#~ print 'CUT','front',front,'back',back,'lenth',len(temp) # DEBUG
-			#~ print temp[front:back]
-			# cut the temp string up to the end of the last string worked on
-			temp = temp[(back+len(tagValue+'>')):]
-		return values
 ########################################################################
 def replaceLineInFile(fileName,stringToSearchForInLine,replacementText):
 	# open file
@@ -167,11 +99,49 @@ def replaceLineInFile(fileName,stringToSearchForInLine,replacementText):
 		return False
 	writeFile(fileName,newFileText)
 ########################################################################
+if '--help' in sys.argv:
+	print('#'*80)
+	print('Scan for closest Open NIC servers and set the system to use them.')
+	print('Copyright (C) 2016  Carl J Smith')
+	print('')
+	print('This program is free software: you can redistribute it and/or modify')
+	print('it under the terms of the GNU General Public License as published by')
+	print('the Free Software Foundation, either version 3 of the License, or')
+	print('(at your option) any later version.')
+	print('')
+	print('This program is distributed in the hope that it will be useful,')
+	print('but WITHOUT ANY WARRANTY; without even the implied warranty of')
+	print('MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the')
+	print('GNU General Public License for more details.')
+	print('')
+	print('You should have received a copy of the GNU General Public License')
+	print('along with this program.  If not, see <http://www.gnu.org/licenses/>.')
+	print('#'*80)
+	print('--help')
+	print('    Display this help menu.')
+	print('--only-opennic')
+	print('    Do not append opendns and google public dns to the')
+	print('    dns nameservers used by the system.')
+	print('-s')
+	print('    Skip the given number of entries returned from opennic.')
+	print('    ex) "opennic-dns-scan -s 2" would skip the first two')
+	print('    entries returned.')
+	print('--remove')
+	print('    Remove changes to dns settings on system.')
+	exit()
+########################################################################
+if '--remove' in sys.argv:
+	# reset all the custom dns back to localhost
+	line = 'prepend domain-name-servers 127.0.0.1'
+	replaceLineInFile('/etc/dhcp/dhclient.conf','prepend domain-name-servers',line)
+	writeFile('/etc/network/interfaces.d/custom-dns','')
+	exit()
+########################################################################
 downloadData = False
 retryCounter = 0
-# download webpage that shows closest dns servers
+# download webpage for opennic dns servers using opennic web api
 while downloadData == False: # try to download the file 10 times
-	downloadData = downloadFile('http://www.opennicproject.org/nearest-servers/')
+	downloadData = downloadFile('http://api.opennicproject.org/geoip/?bare')
 	if retryCounter >= 10:
 		# fail and exit if the server list page fails to download
 		print 'ERROR: Server list failed to download, program will now exit.'
@@ -181,20 +151,38 @@ while downloadData == False: # try to download the file 10 times
 		sleep(5)
 	retryCounter += 1
 # start work on ripping out ip addresses of dns servers
-downloadData = grabXmlValues(grabXmlValues(downloadData,'div class="post-entry"')[0],'p')[0].split('\n')
-data = []
-# split each line pulled out and look for nbsp in em to split on
-for index in downloadData:
-	if '&nbsp' in index:
-		temp = index.split('&nbsp')[0]
-		if temp != None:
-			data.append(temp)
-# ip addresses are stored in data so start building line to insert in config
-temp = 'prepend domain-name-servers '
-for index in data:
-	temp += index+', '
-temp += '\n'
-temp = temp.replace(', \n',';')
+data = downloadData.split('\n')
+# skip given number of ips given in opennic results
+if '-s' in sys.argv:
+	data = data[int(sys.argv[sys.argv.index('-s')+1]):]
+# the order of resolution will be opennic,opendns,google public dns
+# so add opendns and google dns to the end of the nameservers list
+if '--only-opennic' not in sys.argv:
+	# add the opendns domain name servers
+	data.append('208.67.222.222')
+	data.append('208.67.220.220')
+	# add the google domain name servers
+	data.append('8.8.8.8')
+	data.append('8.8.4.4')
+################################################################################
+# change the prepend dns servers in /etc/dhcp/dhclient.conf
+line = 'prepend domain-name-servers '
+# add all the ips to generate the line containing setting the dns servers
+for ip in data:
+	# ignore blank lines
+	if ip != '':
+		line += ip+', '
+line += '\n'
+line = line.replace(', \n',';')
 # insert the line in the config
-replaceLineInFile('/etc/dhcp/dhclient.conf','prepend domain-name-servers',temp)
+replaceLineInFile('/etc/dhcp/dhclient.conf','prepend domain-name-servers',line)
+################################################################################
+# now update the /etc/network/interfaces.d/custom-dns
+line = 'dns-nameservers '
+for ip in data:
+	# ignore blank lines
+	if ip != '':
+		line += ip+' '
+writeFile('/etc/network/interfaces.d/custom-dns',line)
+################################################################################
 print 'New dns settings will be applied on next system restart.'
