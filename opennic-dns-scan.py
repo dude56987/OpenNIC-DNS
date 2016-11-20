@@ -22,18 +22,18 @@ from urllib2 import urlopen
 ########################################################################
 def loadFile(fileName):
 	try:
-		print "Loading :",fileName
-		fileObject=open(fileName,'r');
+		sys.stdout.write('Loading : '+fileName+'...\r')
+		fileObject=open(fileName,'r')
 	except:
-		print "Failed to load :",fileName
+		sys.stdout.write('\rFailed to load : '+fileName+'!\n')
 		return False
 	fileText=''
 	lineCount = 0
 	for line in fileObject:
 		fileText += line
-		sys.stdout.write('Loading line '+str(lineCount)+'...\r')
+		sys.stdout.write('\rLoading '+fileName+' line : '+str(lineCount)+'...')
 		lineCount += 1
-	print "Finished Loading :",fileName
+	sys.stdout.write('\rFinished Loading : '+fileName+'!\n')
 	fileObject.close()
 	if fileText == None:
 		return False
@@ -103,6 +103,21 @@ def replaceLineInFile(fileName,stringToSearchForInLine,replacementText):
 	# write the file
 	writeFile(fileName,newFileText)
 ########################################################################
+def ping(url):
+	'''
+	Ping a url and return true if the site is alive. Return false if the
+	site is unreachable.
+	'''
+	sys.stdout.write('Connection to '+str(url)+' has ...')
+	result = os.popen('fping '+str(url))
+	result = result.read()
+	if 'alive' in result:
+		sys.stdout.write('\rConnection to '+str(url)+' has SUCCEDED!\n')
+		return True
+	else:
+		sys.stdout.write('\rConnection to '+str(url)+' has FAILED!\n')
+		return False
+########################################################################
 if '--help' in sys.argv:
 	print('#'*80)
 	print('Scan for closest Open NIC servers and set the system to use them.')
@@ -169,24 +184,30 @@ if '--only-opennic' not in sys.argv:
 	data.append('8.8.8.8')
 	data.append('8.8.4.4')
 ################################################################################
-# change the prepend dns servers in /etc/dhcp/dhclient.conf
-line = 'prepend domain-name-servers '
-# add all the ips to generate the line containing setting the dns servers
+# check that all dns servers are alive and only use active servers
+tempData = list()
 for ip in data:
 	# ignore blank lines
 	if ip != '':
-		line += ip+', '
-line += '\n'
-line = line.replace(', \n',';')
+		# ping the server ip address
+		if ping(ip):
+			tempData.append(ip)
+# set the data variable to the tempData variable
+data = tempData
+################################################################################
+# change the prepend dns servers in /etc/dhcp/dhclient.conf
+line = 'prepend domain-name-servers '
+# add all the ips to generate the line containing setting the dns servers
+line += ', '.join(data)
+line += ';\n'
 # insert the line in the config
 replaceLineInFile('/etc/dhcp/dhclient.conf','prepend domain-name-servers',line)
 ################################################################################
 # now update the /etc/network/interfaces.d/custom-dns
 line = 'dns-nameservers '
-for ip in data:
-	# ignore blank lines
-	if ip != '':
-		line += ip+' '
+line += ' '.join(data)
 writeFile('/etc/network/interfaces.d/custom-dns',line)
 ################################################################################
+print('#'*80)
 print 'New dns settings will be applied on next system restart.'
+print('#'*80)
