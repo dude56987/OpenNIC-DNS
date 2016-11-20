@@ -87,16 +87,20 @@ def replaceLineInFile(fileName,stringToSearchForInLine,replacementText):
 		temp = temp.split('\n')
 		for line in temp:
 			if line.find(stringToSearchForInLine) == -1:
-				newFileText += line+'\n'
+				newFileText += line.strip()+'\n'
 			else:
 				if replacementText != '':
 					print 'Replacing line:',line
 					print 'With:',replacementText
-					newFileText += replacementText+'\n'
+					newFileText += replacementText.strip()+'\n'
 				else:
 					print 'Deleting line:',line
 	else:
 		return False
+	# Remove groups of three or more blank lines
+	while newFileText.find('\n\n\n') != -1:
+		newFileText = newFileText.replace('\n\n\n','\n')
+	# write the file
 	writeFile(fileName,newFileText)
 ########################################################################
 if '--help' in sys.argv:
