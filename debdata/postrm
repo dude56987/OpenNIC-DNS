@@ -1,2 +1,7 @@
-# remove custom configuration file
-rm -v /etc/network/interfaces.d/custom-dns
+#! /bin/bash
+# remove the custom-dns file if it exists
+if [ -f /etc/network/interfaces.d/custom-dns ];then
+	rm -v /etc/network/interfaces.d/custom-dns
+fi
+# reset the dhclient settings
+sed -i "s/supersede\ domain-name-servers.*$/prepend domain-name-servers 127.0.0.1;\n/g" /etc/dhcp/dhclient.conf

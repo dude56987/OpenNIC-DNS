@@ -1,10 +1,10 @@
 Package: opennic-dns
-Version: 1.0.0
+Version: 1.1.0
 Section: admin
 Maintainer: Carl J Smith <BM-NBHLt5EUFVEbRCmrbVrfCyaB2c8d24U9>
 Installed-Size: 20
 Priority: optional
 Architecture: all
-Depends: python (>=2.7)
+Depends: python (>=2.7), fping
 Description: Sets system dns to Open NIC DNS.
  Tools for setting the system dns to Open NIC DNS. opennic-dns-scan command will scan for the closest Open NIC DNS servers and set them.

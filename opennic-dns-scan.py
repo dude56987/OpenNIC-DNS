@@ -147,12 +147,16 @@ if '--help' in sys.argv:
 	print('    entries returned.')
 	print('--remove')
 	print('    Remove changes to dns settings on system.')
+	print('--list')
+	print('    List the ip addresses found to be the dns servers. Do')
+	print('    NOT apply changes to the DNS for the system.')
 	exit()
 ########################################################################
 if '--remove' in sys.argv:
 	# reset all the custom dns back to localhost
-	line = 'prepend domain-name-servers 127.0.0.1'
+	line = 'supersede domain-name-servers 127.0.0.1;'
 	replaceLineInFile('/etc/dhcp/dhclient.conf','prepend domain-name-servers',line)
+	replaceLineInFile('/etc/dhcp/dhclient.conf','supersede domain-name-servers',line)
 	writeFile('/etc/network/interfaces.d/custom-dns','')
 	exit()
 ########################################################################
@@ -195,18 +199,34 @@ for ip in data:
 # set the data variable to the tempData variable
 data = tempData
 ################################################################################
+if '--list' in sys.argv:
+	# print all ips for dns servers and exit
+	for ip in data:
+		print(ip)
+	exit()
+################################################################################
 # change the prepend dns servers in /etc/dhcp/dhclient.conf
-line = 'prepend domain-name-servers '
+line = 'supersede domain-name-servers '
 # add all the ips to generate the line containing setting the dns servers
 line += ', '.join(data)
 line += ';\n'
 # insert the line in the config
 replaceLineInFile('/etc/dhcp/dhclient.conf','prepend domain-name-servers',line)
+replaceLineInFile('/etc/dhcp/dhclient.conf','supersede domain-name-servers',line)
+# restart the dhclient to apply the new settings
+os.popen('dhclient -r')
 ################################################################################
 # now update the /etc/network/interfaces.d/custom-dns
 line = 'dns-nameservers '
 line += ' '.join(data)
 writeFile('/etc/network/interfaces.d/custom-dns',line)
+################################################################################
+# restart networking
+################################################################################
+try:
+	os.popen('systemctl restart networking')
+except:
+	os.popen('service networking restart')
 ################################################################################
 print('#'*80)
 print 'New dns settings will be applied on next system restart.'
