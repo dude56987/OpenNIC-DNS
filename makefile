@@ -1,26 +1,55 @@
 show:
 	echo 'Run "make install" as root to install program!'
+check:
+	################################################################################
+	# display the dhcp config file
+	################################################################################
+	cat /etc/dhcp/dhclient.conf | grep domain-name-servers
+	################################################################################
+	# display the network config file
+	################################################################################
+	grep -f /etc/network/interfaces.d/custom-dns "dns-nameservers" || echo "/etc/network/interfaces.d/custom-dns has been deleted!"
 test: install
+	################################################################################
 	# test diffrent arguments and usages of opennic dns scan
+	################################################################################
 	sudo opennic-dns-scan --help
 	sudo opennic-dns-scan
 	sudo opennic-dns-scan -s 2
+	################################################################################
+	# check config files after they have been setup
+	################################################################################
+	make check
+	################################################################################
+	# run removal and the config files should be unconfigured
+	################################################################################
 	sudo opennic-dns-scan --remove
+	################################################################################
+	make check
+	################################################################################
+	# uninstall the package and check that logs have been reset
+	################################################################################
+	make uninstall
+	################################################################################
+	make check
 run:
 	python opennic-dns-scan.py
 install: build
 	sudo gdebi --non-interactive opennic-dns_UNSTABLE.deb
 uninstall:
-	sudo apt-get purge opennic-dns
+	sudo apt-get purge opennic-dns --assume-yes
 installed-size:
 	du -sx --exclude DEBIAN ./debian/
 build:
 	sudo make build-deb;
 build-deb:
-	mkdir -p debian;
-	mkdir -p debian/DEBIAN;
-	mkdir -p debian/usr;
-	mkdir -p debian/usr/bin;
+	mkdir -p debian
+	mkdir -p debian/DEBIAN
+	mkdir -p debian/usr
+	mkdir -p debian/usr/bin
+	mkdir -p debian/usr/etc/network/interfaces.d/
+	# copy the blank dns configuration file
+	touch debian/usr/etc/network/interfaces.d/custom-dns
 	# copy over the binary
 	cp -vf opennic-dns-scan.py ./debian/usr/bin/opennic-dns-scan
 	# make the program executable
