@@ -19,6 +19,7 @@
 import os, sys, re
 from time import sleep
 from urllib2 import urlopen
+from random import choice
 ########################################################################
 def loadFile(fileName):
 	try:
@@ -227,6 +228,23 @@ try:
 	os.popen('systemctl restart networking')
 except:
 	os.popen('service networking restart')
+################################################################################
+# wait for the network to come back up before exiting the program
+print('Waiting for network to come back up...')
+retryCounter = 0
+pingCheck = ping(choice(data))
+while pingCheck == False:
+	# ping a random server from the list of dns servers
+	pingCheck = ping(choice(data))
+	# try to download the file 10 times
+	if retryCounter >= 10:
+		# fail and exit if the server list page fails to download
+		print 'ERROR: Failed to bring network back up.'
+		exit()
+	else:
+		print 'Waiting 5 seconds before retry...'
+		sleep(5)
+	retryCounter += 1
 ################################################################################
 print('#'*80)
 print 'New dns settings will be applied on next system restart.'
