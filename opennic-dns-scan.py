@@ -134,7 +134,7 @@ def wait(seconds):
 if '--help' in sys.argv:
 	print('#'*80)
 	print('Scan for closest Open NIC servers and set the system to use them.')
-	print('Copyright (C) 2016  Carl J Smith')
+	print('Copyright (C) 2017  Carl J Smith')
 	print('')
 	print('This program is free software: you can redistribute it and/or modify')
 	print('it under the terms of the GNU General Public License as published by')
