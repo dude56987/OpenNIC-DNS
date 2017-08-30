@@ -1,7 +1,7 @@
 #! /usr/bin/python
 ########################################################################
 # Scan for closest Open NIC servers and set the system to use them.
-# Copyright (C) 2016  Carl J Smith
+# Copyright (C) 2017  Carl J Smith
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,14 +109,17 @@ def ping(url):
 	Ping a url and return true if the site is alive. Return false if the
 	site is unreachable.
 	'''
-	sys.stdout.write('Connection to '+str(url)+' has ...')
+	sys.stdout.write('Connecting to '+str(url)+'...')
+	sys.stdout.flush()
 	result = os.popen('fping '+str(url))
 	result = result.read()
 	if 'alive' in result:
 		sys.stdout.write('\rConnection to '+str(url)+' has SUCCEDED!\n')
+		sys.stdout.flush()
 		return True
 	else:
 		sys.stdout.write('\rConnection to '+str(url)+' has FAILED!\n')
+		sys.stdout.flush()
 		return False
 ########################################################################
 def wait(seconds):
