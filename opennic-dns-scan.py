@@ -119,6 +119,15 @@ def ping(url):
 		sys.stdout.write('\rConnection to '+str(url)+' has FAILED!\n')
 		return False
 ########################################################################
+def wait(seconds):
+	for count in range(seconds):
+		sys.stdout.write('\r'+str(seconds - count)+'...')
+		sys.stdout.flush()
+		sleep(1)
+	# clean the line back to the begining
+	sys.stdout.write((' '*10)+'\r')
+	sys.stdout.flush()
+########################################################################
 if '--help' in sys.argv:
 	print('#'*80)
 	print('Scan for closest Open NIC servers and set the system to use them.')
@@ -165,14 +174,14 @@ downloadData = False
 retryCounter = 0
 # download webpage for opennic dns servers using opennic web api
 while downloadData == False: # try to download the file 10 times
-	downloadData = downloadFile('http://api.opennicproject.org/geoip/?bare')
+	downloadData = downloadFile('https://api.opennicproject.org/geoip/?bare')
 	if retryCounter >= 10:
 		# fail and exit if the server list page fails to download
 		print 'ERROR: Server list failed to download, program will now exit.'
 		exit()
 	elif downloadData == False:
 		print 'Waiting 5 seconds before retry...'
-		sleep(5)
+		wait(5)
 	retryCounter += 1
 # start work on ripping out ip addresses of dns servers
 data = downloadData.split('\n')
@@ -231,6 +240,8 @@ except:
 ################################################################################
 # wait for the network to come back up before exiting the program
 print('Waiting for network to come back up...')
+# give the system 10 seconds for the network to come back up
+wait(10)
 retryCounter = 0
 pingCheck = ping(choice(data))
 while pingCheck == False:
@@ -243,7 +254,7 @@ while pingCheck == False:
 		exit()
 	else:
 		print 'Waiting 5 seconds before retry...'
-		sleep(5)
+		wait(5)
 	retryCounter += 1
 ################################################################################
 print('#'*80)
